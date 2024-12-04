@@ -175,4 +175,39 @@
         <tag>组合数(1e5）</tag>
       </tags>
   </entry>
+  <entry>
+    <title>云服务器配置frp（基础篇）</title>
+    <url>/2024/12/04/%E4%BA%91%E6%9C%8D%E5%8A%A1%E5%99%A8%E9%85%8D%E7%BD%AEfrp%EF%BC%88%E5%9F%BA%E7%A1%80%E7%AF%87%EF%BC%89/</url>
+    <content><![CDATA[<h1 id="云服务器配置frp（基础篇）"><a href="#云服务器配置frp（基础篇）" class="headerlink" title="云服务器配置frp（基础篇）"></a>云服务器配置frp（基础篇）</h1><p>本文基于debian11.3系统，云服务器为阿里云轻量应用服务器。该基础篇仅介绍frp服务基本配置，不涉及具体应用场景。</p>
+<p>以下所有代码默认以root身份执行</p>
+<p>我们选择在 <code>\opt\frp</code>文件夹下部署frp服务，如没有文件夹请提前用<code>mkdir</code>命令创建</p>
+<h2 id="下载frp压缩包"><a href="#下载frp压缩包" class="headerlink" title="下载frp压缩包"></a>下载frp压缩包</h2><p>通过<code>cd \opt\frp </code>定位到该文件夹，使用<code>\wget https://github.com/fatedier/frp/releases/download/v0.xx.x/frp_0.xx.x_linux_amd64.tar.gz tar -zxvf frp_0.xx.x_linux_amd64.tar.gz</code>命令下载frp安装包，注意<code>v0.xx.x</code>应严格换成所需版本，本文中 笔者使用的是<code>0.61.0</code>版本，命令即为<code>wget https://github.com/fatedier/frp/releases/download/v0.61.0/frp_0.61.0_linux_amd64.tar.gz </code></p>
+<h2 id="解压缩"><a href="#解压缩" class="headerlink" title="解压缩"></a>解压缩</h2><p>执行解压缩命令<code>tar -zxvf frp_0.61.0_linux_amd64.tar.gz</code></p>
+<p>在当前目录下会出现一个<code>frp_0.61.0_linux_amd64</code>文件夹</p>
+<p>文件夹中包含<code>frpc  frpc.toml  frps  frps.toml  LICENSE</code>等四个文件</p>
+<p>注意：在较新版本中，已经没有<code>frps.init</code>文件，取而代之的是<code>frpc.toml</code>文件</p>
+<h2 id="修改配置文件"><a href="#修改配置文件" class="headerlink" title="修改配置文件"></a>修改配置文件</h2><p>使用nano 或 vim命令对<code>frpc.toml</code>文件稍作修改，参考：</p>
+<figure class="highlight toml"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 服务端口</span></span><br><span class="line"><span class="attr">bindPort</span> = <span class="number">7000</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Dashboard 配置</span></span><br><span class="line"><span class="attr">webServer.addr</span> = <span class="string">&quot;0.0.0.0&quot;</span></span><br><span class="line"><span class="attr">webServer.port</span> = <span class="number">7001</span></span><br><span class="line"><span class="attr">webServer.user</span> = <span class="string">&quot;admin&quot;</span></span><br><span class="line"><span class="attr">webServer.password</span> = <span class="string">&quot;password&quot;</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="开放端口"><a href="#开放端口" class="headerlink" title="开放端口"></a>开放端口</h2><p>在阿里云服务器中，我们只需在服务器控制台中添加规则即可。</p>
+<p>在上面的配置中，我们使用了 <code>7000</code>和<code>7001</code>端口，分别添加规则即可</p>
+<p>应用类型 为自定义，协议为TCP, 来源为0.0.0.0 都用默认设置即可，自行设置端口范围和备注。</p>
+<h2 id="启动服务"><a href="#启动服务" class="headerlink" title="启动服务"></a>启动服务</h2><p>此时，输入<code>frps -c frps.toml </code>即可启动服务</p>
+<p>任选设备在浏览器中输入<code>x.x.x.x:7001</code>，出现如下图页面即为服务开放成功，其中，<code>x.x.x.x</code>为您的服务器公网ip</p>
+<h2 id="配置Systemd管理服务"><a href="#配置Systemd管理服务" class="headerlink" title="配置Systemd管理服务"></a>配置Systemd管理服务</h2><p>我们发现输入<code>frps -c frps.toml </code>过于繁琐，且不方便查看服务状态</p>
+<p>可以执行<code>nano \etc\systemd\system\frps.service</code> 在<code>\etc\systemd\system\</code>文件夹中创建<code>frps.service</code>文件，写入以下内容：</p>
+<figure class="highlight toml"><table><tr><td class="code"><pre><span class="line"><span class="section">[Unit]</span></span><br><span class="line"><span class="comment"># 服务名称</span></span><br><span class="line"><span class="attr">Description</span> = frp server</span><br><span class="line"><span class="attr">After</span> = network.target syslog.target</span><br><span class="line"><span class="attr">Wants</span> = network.target</span><br><span class="line"></span><br><span class="line"><span class="section">[Service]</span></span><br><span class="line"><span class="attr">Type</span> = simple</span><br><span class="line"><span class="comment"># 启动frps</span></span><br><span class="line"><span class="attr">ExecStart</span> = /opt/frp/frp_0.<span class="number">61.0</span>_linux_amd64/frps -c /opt/frp/frp_0.<span class="number">61.0</span>_linux_amd64/frps.toml</span><br><span class="line"></span><br><span class="line"><span class="section">[Install]</span></span><br><span class="line"><span class="attr">WantedBy</span> = multi-user.target</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>其中，<code>ExecStart = /.../x/frps -c /.../x/frps.toml</code>这一行<code>/.../x/</code>所对应的应为您frps文件和frps.toml文件所对应的地址。</p>
+<p>现在我们可以方便的管理服务了：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">systemctl status frps</span><br><span class="line"><span class="comment">#服务状态</span></span><br><span class="line">systemctl start frps</span><br><span class="line"><span class="comment">#启动服务</span></span><br><span class="line">systemctl stop frps</span><br><span class="line"><span class="comment">#停止服务</span></span><br><span class="line">systemctl <span class="built_in">enable</span> frps</span><br><span class="line"><span class="comment">#设置开机自启</span></span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>服务器</category>
+      </categories>
+      <tags>
+        <tag>frp</tag>
+      </tags>
+  </entry>
 </search>
